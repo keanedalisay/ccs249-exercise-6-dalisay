@@ -23,55 +23,71 @@ def getWordTagCount(split_sentences):
   
   return word_count, tag_count
 
-def getTransitionProbabilities(tag_count, split_sentences):
-  trnsmn_prob = []
+class HiddenMarkovModel:
+  def __init__(self, tag_count, split_sentences):
+    self.tag_count = tag_count
+    self.split_sentences = split_sentences
+    self.trnsn_probs = []
+    self.emsn_probs = []
 
-  for tag in tag_count:
-    if (tag == 'END'):
-      continue
-    else: 
-      row = {}
-      trnsn = {}
-      for i in range(len(split_sentences)):
-        for j in range(len(split_sentences[i])):
-          word_pos = split_sentences[i][j].split('_')
-          word_tag = word_pos[1]
-          if (re.match(tag, word_tag)):
-            if (j != len(split_sentences[i]) - 1):
-              next_word_pos = split_sentences[i][j+1].split('_')
-              next_word_tag = next_word_pos[1]
-              trnsn[next_word_tag] = trnsn.get(next_word_tag, 0) + 1
-              row[word_tag] = trnsn
-              print(f"{word_tag} => {next_word_tag}")
-      for tag in row:
-        # print(f"{tag} => {row[tag]}")
-        for next_tag in row[tag]:
-          trnsmn_prob.append((tag, next_tag, row[tag][next_tag] / tag_count[tag]))
+  def build(self):
+    self.__transition_probabilities()
+    self.__emission_probabilities()
   
-  return trnsmn_prob
+  def predict(self, observations):
+    # Implement the prediction logic here using Viterbi algorithm
+    pass
+  
+  def __transition_probabilities(self):
+    for tag in self.tag_count:
+      if (tag == 'END'): # To prevent END tag from being used as a transition
+        continue
+      else: 
+        transitions = {}
+        next_tag_count = {}
+        for i in range(len(self.split_sentences)): # For each sentence
+          for j in range(len(self.split_sentences[i])): # For each word in the sentence
+            word_pos = self.split_sentences[i][j].split('_') # Split the word and tag
+            word_tag = word_pos[1]
+            if (re.match(tag, word_tag)): # If the tag matches
+              if (j != len(self.split_sentences[i]) - 1): # If not the last word
+                # Get the next word and its tag
+                next_word_pos = self.split_sentences[i][j+1].split('_') 
+                next_word_tag = next_word_pos[1]
+                next_tag_count[next_word_tag] = next_tag_count.get(next_word_tag, 0) + 1 
+                transitions[word_tag] = next_tag_count # Add the next tag count to the transitions dictionary
+                # print(f"{word_tag} => {next_word_tag}")
 
-def getEmissionProbabilities(tag_count, split_sentences):
-  emsn_prob = []
+        for tag in transitions:
+          # print(f"{tag} => {transitions[tag]}")
+          for next_tag in transitions[tag]:
+            # Calculate the transition probability
+            self.trnsn_probs.append((tag, next_tag, transitions[tag][next_tag] / self.tag_count[tag])) 
+    return
 
-  for tag in tag_count:
-    if (tag == 'START' or tag == 'END'):
-      continue
-    else:
-      row = {}
-      for i in range(len(split_sentences)):
-        for j in range(len(split_sentences[i])):
-          word_pos = split_sentences[i][j].split('_')
-          word_tag = word_pos[1]
-          if (re.match(tag, word_tag)):
-            word = word_pos[0]
-            if (word not in row):
-              row[word] = 1
-            else:
-              row[word] += 1
-      for word in row:
-        emsn_prob.append((tag, word, row[word] / tag_count[tag]))
+  def __emission_probabilities(self):
+    for tag in self.tag_count:
+      if (tag == 'START' or tag == 'END'): # To prevent START and END tags from being used as emissions
+        continue
+      else:
+        emissions = {}
+        for i in range(len(self.split_sentences)): # For each sentence
+          for j in range(len(self.split_sentences[i])): # For each word in the sentence
+            word_pos = self.split_sentences[i][j].split('_') # Split the word and tag
+            word_tag = word_pos[1]
+            if (re.match(tag, word_tag)): 
+              word = word_pos[0]
+              if (word not in emissions): # If the word is not in the emissions dictionary
+                emissions[word] = 1 # Add the word to the emissions dictionary
+              else:
+                emissions[word] += 1 # Increment the count of the word in the emissions dictionary
 
-  return emsn_prob
+        for word in emissions:
+          # print(f"{tag} => {word}: {emissions[word] / self.tag_count[tag]}")
+          # Calculate the emission probability
+          self.emsn_probs.append((tag, word, emissions[word] / self.tag_count[tag]))
+    return
+  
 
 def main():
   x_train = [
@@ -85,15 +101,16 @@ def main():
     'A_DET bird_NOUN chirps_VERB'
   ]
 
+  x_test = [
+    'The can meows',
+    'My dog barks loudly',
+  ]
+
   x_train_split = [['<s>_START'] + sentence.split(' ') + ['<e>_END'] for sentence in x_train]
-
   word_count, tag_count = getWordTagCount(x_train_split)
-  trnsmn_prob = getTransitionProbabilities(tag_count, x_train_split)
-  emsn_prob = getEmissionProbabilities(tag_count, x_train_split)
 
-  print(tag_count, '\n')
-  print(trnsmn_prob, '\n')
-  print(emsn_prob)
+  hmm = HiddenMarkovModel(tag_count, x_train_split)
+  hmm.build()
 
 if __name__ == '__main__':
   main()
