@@ -27,23 +27,23 @@ class HiddenMarkovModel:
   def __init__(self, tag_count, split_sentences):
     self.tag_count = tag_count
     self.split_sentences = split_sentences
-    self.trnsn_probs = []
+    self.trnsmn_probs = []
     self.emsn_probs = []
 
   def build(self):
-    self.__transition_probabilities()
+    self.__transmission_probabilities()
     self.__emission_probabilities()
   
   def predict(self, observations):
     # Implement the prediction logic here using Viterbi algorithm
     pass
   
-  def __transition_probabilities(self):
+  def __transmission_probabilities(self):
     for tag in self.tag_count:
-      if (tag == 'END'): # To prevent END tag from being used as a transition
+      if (tag == 'END'): # To prevent END tag from being used as a transmission
         continue
       else: 
-        transitions = {}
+        transmissions = {}
         next_tag_count = {}
         for i in range(len(self.split_sentences)): # For each sentence
           for j in range(len(self.split_sentences[i])): # For each word in the sentence
@@ -55,14 +55,14 @@ class HiddenMarkovModel:
                 next_word_pos = self.split_sentences[i][j+1].split('_') 
                 next_word_tag = next_word_pos[1]
                 next_tag_count[next_word_tag] = next_tag_count.get(next_word_tag, 0) + 1 
-                transitions[word_tag] = next_tag_count # Add the next tag count to the transitions dictionary
+                transmissions[word_tag] = next_tag_count # Add the next tag count to the transmissions dictionary
                 # print(f"{word_tag} => {next_word_tag}")
 
-        for tag in transitions:
-          # print(f"{tag} => {transitions[tag]}")
-          for next_tag in transitions[tag]:
-            # Calculate the transition probability
-            self.trnsn_probs.append((tag, next_tag, transitions[tag][next_tag] / self.tag_count[tag])) 
+        for tag in transmissions:
+          # print(f"{tag} => {transmissions[tag]}")
+          for next_tag in transmissions[tag]:
+            # Calculate the transmission probability
+            self.trnsmn_probs.append((tag, next_tag, transmissions[tag][next_tag] / self.tag_count[tag])) 
     return
 
   def __emission_probabilities(self):
