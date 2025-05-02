@@ -1,4 +1,5 @@
 import re
+from collections import defaultdict
 
 def getWordTagCount(split_sentences):
   word_count = {}
@@ -34,9 +35,51 @@ class HiddenMarkovModel:
     self.__transmission_probabilities()
     self.__emission_probabilities()
   
-  def predict(self, observations):
-    # Implement the prediction logic here using Viterbi algorithm
-    pass
+  def viterbi(self, observations):
+    states = [tag for tag in self.tag_count if tag != 'START' and tag != 'END']
+
+    # Convert transmission and emission probability lists to lookup dictionaries
+    trans_probs = defaultdict(lambda: defaultdict(lambda: 1e-6))
+    for from_tag, to_tag, prob in self.trnsmn_probs:
+        trans_probs[from_tag][to_tag] = prob
+
+    emit_probs = defaultdict(lambda: defaultdict(lambda: 1e-6))
+    for tag, word, prob in self.emsn_probs:
+        emit_probs[tag][word] = prob
+
+    # Initialize Viterbi table
+    V = [{}]
+    path = {}
+
+    for state in states:
+        trans_prob = trans_probs['START'].get(state, 1e-6)
+        emit_prob = emit_probs[state].get(observations[0], 1e-6)
+        V[0][state] = trans_prob * emit_prob
+        path[state] = [state]
+
+    # Run Viterbi for t > 0
+    for t in range(1, len(observations)):
+        V.append({})
+        new_path = {}
+
+        for curr_state in states:
+            max_prob, best_prev_state = max(
+                (V[t-1][prev_state] * trans_probs[prev_state].get(curr_state, 1e-6) *
+                 emit_probs[curr_state].get(observations[t], 1e-6), prev_state)
+                for prev_state in states
+            )
+            V[t][curr_state] = max_prob
+            new_path[curr_state] = path[best_prev_state] + [curr_state]
+
+        path = new_path
+
+    # Final transition to END
+    max_prob, best_last_state = max(
+        (V[len(observations)-1][state] * trans_probs[state].get('END', 1e-6), state)
+        for state in states
+    )
+
+    return path[best_last_state]
   
   def __transmission_probabilities(self):
     for tag in self.tag_count:
@@ -102,7 +145,7 @@ def main():
   ]
 
   x_test = [
-    'The can meows',
+    'The cat meows',
     'My dog barks loudly',
   ]
 
@@ -111,6 +154,12 @@ def main():
 
   hmm = HiddenMarkovModel(tag_count, x_train_split)
   hmm.build()
+
+  for sentence in x_test:
+    words = sentence.split(' ')
+    predicted_tags = hmm.viterbi(words)
+    print(f"Sentence: {sentence}")
+    print(f"Predicted tags: {predicted_tags}\n")
 
 if __name__ == '__main__':
   main()
